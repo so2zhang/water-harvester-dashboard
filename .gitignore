@@ -1,0 +1,11 @@
+# Configuration file with sensitive credentials
+config.js
+
+# Editor and OS files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
