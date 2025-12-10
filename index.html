@@ -124,9 +124,34 @@
       font-size: 0.8rem;
       color: #b91c1c;
     }
+    .icon-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+    .harvester-icon {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      transition: transform 0.3s ease;
+    }
+    .harvester-icon.bounce {
+      animation: bounce 0.6s ease infinite;
+    }
+    @keyframes bounce {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="icon-container">
+    <img id="harvester-icon" src="stylized_flower.png" alt="Fog Harvester" class="harvester-icon" />
+  </div>
   <main class="card">
     <header>
       <h1>Water Harvester</h1>
@@ -204,6 +229,7 @@
     const lastUpdatedEl = document.getElementById("last-updated");
     const thresholdLabelEl = document.getElementById("threshold-label");
     const errorEl = document.getElementById("error");
+    const harvesterIconEl = document.getElementById("harvester-icon");
 
     function setError(msg) {
       errorEl.style.display = "block";
@@ -263,6 +289,13 @@
         barLabelEl.textContent = pct.toFixed(0) + "% full";
         waterMmEl.textContent = value.toFixed(1);
         lastUpdatedEl.textContent = formatDate(createdAt);
+
+        // Bounce icon when very full (>= 90%)
+        if (pct >= 90) {
+          harvesterIconEl.classList.add("bounce");
+        } else {
+          harvesterIconEl.classList.remove("bounce");
+        }
 
         if (pct >= 100) {
           statusTextEl.textContent = "Full";
