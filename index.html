@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Water Harvester Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 2rem 1.5rem;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Helvetica Neue", Arial, sans-serif;
+      background: radial-gradient(circle at top, #f3fbff, #f5f5ff);
+      color: #111827;
+      display: flex;
+      justify-content: center;
+    }
+    .card {
+      width: 100%;
+      max-width: 500px;
+      background: #ffffffcc;
+      backdrop-filter: blur(10px);
+      border-radius: 1.2rem;
+      padding: 1.8rem 1.6rem;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.15);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    h1 {
+      margin: 0 0 0.3rem;
+      font-size: 1.5rem;
+      letter-spacing: 0.02em;
+    }
+    .subtitle {
+      margin: 0 0 1.4rem;
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+    .bar-wrapper {
+      margin-top: 0.8rem;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      height: 26px;
+      position: relative;
+    }
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #22c55e);
+      transition: width 0.3s ease-out;
+    }
+    .bar-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #111827;
+      text-shadow: 0 1px 3px rgba(255, 255, 255, 0.8);
+      pointer-events: none;
+    }
+    .stats {
+      margin-top: 1.2rem;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      font-size: 0.9rem;
+    }
+    .stat {
+      padding: 0.7rem 0.8rem;
+      border-radius: 0.8rem;
+      background: #f9fafb;
+      border: 1px solid rgba(209, 213, 219, 0.8);
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: #6b7280;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.15rem;
+    }
+    .stat-value {
+      font-weight: 600;
+    }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: #ecfdf5;
+      color: #166534;
+      border: 1px solid rgba(22, 163, 74, 0.4);
+    }
+    .status-dot {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+    }
+    .footer {
+      margin-top: 1.6rem;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .error {
+      margin-top: 0.6rem;
+      font-size: 0.8rem;
+      color: #b91c1c;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <header>
+      <h1>Water Harvester</h1>
+      <p class="subtitle">Live fill level from your ESP32 + Adafruit IO</p>
+    </header>
+
+    <section>
+      <div class="bar-wrapper">
+        <div id="fill-bar" class="bar"></div>
+        <div id="bar-label" class="bar-label">--% full</div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Water level</div>
+          <div class="stat-value">
+            <span id="water-mm">--</span> mm
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Status</div>
+          <div class="stat-value">
+            <span id="status-chip" class="status-chip">
+              <span class="status-dot"></span>
+              <span id="status-text">Loading...</span>
+            </span>
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Last updated</div>
+          <div class="stat-value" id="last-updated">--</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Threshold</div>
+          <div class="stat-value" id="threshold-label">--</div>
+        </div>
+      </div>
+
+      <div id="error" class="error" style="display:none;"></div>
+    </section>
+
+    <footer class="footer">
+      <span>Powered by ESP32 × Adafruit IO</span>
+      <span id="refresh-note">Auto-refreshing every 15s</span>
+    </footer>
+  </main>
+
+  <script>
+    // ---- CONFIGURE THESE ----
+    const AIO_USERNAME = "so2zhang";      // your Adafruit IO username
+    const FEED_KEY = "water-level-mm";    // your feed key
+    const AIO_KEY = "YOUR_AIO_KEY_HERE";  // <-- paste your AIO key here
+    const WATER_THRESH_MM = 35.0;         // "full" water level
+
+    const barEl = document.getElementById("fill-bar");
+    const barLabelEl = document.getElementById("bar-label");
+    const waterMmEl = document.getElementById("water-mm");
+    const statusTextEl = document.getElementById("status-text");
+    const lastUpdatedEl = document.getElementById("last-updated");
+    const thresholdLabelEl = document.getElementById("threshold-label");
+    const errorEl = document.getElementById("error");
+
+    function setError(msg) {
+      errorEl.style.display = "block";
+      errorEl.textContent = msg;
+    }
+
+    function clearError() {
+      errorEl.style.display = "none";
+      errorEl.textContent = "";
+    }
+
+    function formatDate(isoString) {
+      if (!isoString) return "--";
+      const d = new Date(isoString);
+      if (Number.isNaN(d.getTime())) return isoString;
+      return d.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    async function fetchLatest() {
+      try {
+        clearError();
+        statusTextEl.textContent = "Updating...";
+
+        const url =
+          "https://io.adafruit.com/api/v2/" +
+          encodeURIComponent(AIO_USERNAME) +
+          "/feeds/" +
+          encodeURIComponent(FEED_KEY) +
+          "/data/last?x-aio-key=" +
+          encodeURIComponent(AIO_KEY);
+
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status);
+        }
+
+        const data = await resp.json();
+        const value = parseFloat(data.value); // water level in mm
+        const createdAt = data.created_at;
+
+        if (!Number.isFinite(value)) {
+          throw new Error("Latest value is not numeric.");
+        }
+
+        const pctRaw = (value / WATER_THRESH_MM) * 100;
+        const pct = Math.max(0, Math.min(100, pctRaw));
+
+        // Update UI
+        barEl.style.width = pct.toFixed(0) + "%";
+        barLabelEl.textContent = pct.toFixed(0) + "% full";
+        waterMmEl.textContent = value.toFixed(1);
+        lastUpdatedEl.textContent = formatDate(createdAt);
+
+        if (pct >= 100) {
+          statusTextEl.textContent = "Full";
+        } else if (pct >= 70) {
+          statusTextEl.textContent = "High";
+        } else if (pct <= 10) {
+          statusTextEl.textContent = "Low";
+        } else {
+          statusTextEl.textContent = "Filling";
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Could not fetch latest data from Adafruit IO (" + err.message + ").");
+        statusTextEl.textContent = "Error";
+      }
+    }
+
+    // Set threshold label on page load
+    thresholdLabelEl.textContent = WATER_THRESH_MM.toFixed(1) + " mm (full)";
+
+    // Initial load + poll every 15 seconds
+    fetchLatest();
+    setInterval(fetchLatest, 15000);
+  </script>
+</body>
+</html>
